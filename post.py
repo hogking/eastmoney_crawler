@@ -51,14 +51,22 @@ class Post:
     def set_detail(self, parser):  #获取主帖详细内容
         self.like_count = self.get_like_count()  #文章点赞
         html = load_page(self.url)
-        if self.post_type =='qa':   #如果文章类型是问董秘类型
-            self.question = parser.get_post_question(html)
-            self.answer = parser.get_post_answer(html)
-            self.content = {'question': self.question, 'answer': self.answer}
+        if html == None:
+            return 0
+        if self.post_type == 'qa':   #如果文章类型是问董秘类型
+            try:
+                self.question = parser.get_post_question(html)
+                self.answer = parser.get_post_answer(html)
+                self.content = {'question': self.question, 'answer': self.answer}
+            except:
+                self.content = parser.get_post_content(html)  #文章内容
         elif self.post_type == 'hinfo':  #如果是新闻，hinfo类型
             self.content = parser.get_news_content(html)
         else:  #普通文章，normal类型
-            self.title = parser.get_post_title(html)
+            title = parser.get_post_title(html)
+            if title == '':  #若获取标题先失败了，说明该帖子实际上不存在，退出获取。函数返回0
+                return 0
+            self.title = title
             self.content = parser.get_post_content(html)  #文章内容
         self.post_time = parser.get_post_time(html)  #文章发表时间   
         self.user_id = parser.get_author_id(html)  #作者id
@@ -83,6 +91,7 @@ class Post:
             self.get_comments_user_info()           #获取所有的评论用户的影响力、吧龄
         else:
             self.last_update_at = self.post_time
+        return 1
 
     def get_comments_user_info(self):  #获取全部评论的影响力及吧龄数据
         times = math.ceil(len(self.comments)/30)  #需要把多个用户的id分开多次获取
@@ -166,6 +175,8 @@ class Post:
         for num in range(self.page_count):
             url = self.url[:-5] + '_' + str(num+1) + '.html'
             html = load_page(url)
+            if html == None:
+                return 0
             #获取当前页的 所有评论 标签
             comments = parser.get_comment_list(html)
             for c in comments:  #每一个评论
@@ -191,6 +202,8 @@ class Post:
     def get_comment(self, parser):
         url = self.q.get(timeout=2)
         html = load_page(url)
+        if html == None:
+            return
         time.sleep(0.1)
         #获取当前页的 所有评论 标签
         comments = parser.get_comment_list(html)
@@ -233,7 +246,7 @@ class commentThread(threading.Thread):
     def run(self):
         while True:
             try:
-                self.post.get_comment()
+                self.post.get_comment(self.parser)
             except:
                 break
 
@@ -245,13 +258,15 @@ class detailThread(threading.Thread):
         self.q = q
         self.db = db
     def run(self):
-        while True:
-            try:
-                data = (self.q).get(timeout=2)
-                data.set_detail(self.parser)
+        #print('%s开始保存' % self.name)
+        while not (self.q).empty():
+            data = (self.q).get(timeout=2)
+            result = data.set_detail(self.parser)
+            if result != 0:
                 data.save(self.db)
-            except:
-                break
+            else:
+                continue
+        #print('%s保存完毕' % self.name)
 
 class postThread(threading.Thread):
     def __init__(self, name, func, parser):
@@ -262,6 +277,6 @@ class postThread(threading.Thread):
     def run(self):
         while True:
             try:
-                self.func(self.name, self.parser)
-            except:
+                self.func(self.parser)
+            except:  #队列任务获取结束
                 break

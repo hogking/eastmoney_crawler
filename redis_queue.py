@@ -13,7 +13,8 @@ def get_redis_queue(r):  #获取任务队列，参数为redis
     if r.llen('code') != 0: #先把队列清空
         r.ltrim('code',0,0)
         r.lpop('code')
-    code = get_code()   #获取所有股票代码   
+    code = get_code()   #获取所有股票代码 
+    #code = ['603898', '603899', '603897', '603896']  #测试代码
     for c in code:      #把待爬取的股票代码放入redis队列中
         r.rpush('code',c)
 

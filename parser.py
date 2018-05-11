@@ -11,7 +11,6 @@ class Parser(object):
         except:
             last_comment_time = self.get_post_time(html)  #若没有评论，就返回发帖时间
         return last_comment_time
-        
     
     def get_comment_list(self, html):  #获取文章的评论列表
         comments = html.xpath('//div[@id="mainbody"]/div[@id="zwlist"]//div[@class="zwli clearfix"]')
@@ -20,7 +19,12 @@ class Parser(object):
     def get_comment_detail(self, comment):  #获取文章的评论的细节
         comment_id = comment.attrib['data-huifuid']
         user_id = comment.attrib['data-huifuuid']
-        user_nickname = comment.xpath('div[@class="zwlitx"]/div/div[@class="zwlianame"]/span/a')[0].text
+        if len(comment.xpath('div[@class="zwlitx"]/div/div[@class="zwlianame"]/span/a'))!=0:
+            user_nickname = comment.xpath('div[@class="zwlitx"]/div/div[@class="zwlianame"]/span/a')[0].text
+        else:  #如果回帖者是如来自Android客户端的“上海网友”，则评论会没有用户id信息
+            user_nickname = comment.xpath('div[@class="zwlitx"]/div/div[@class="zwlianame"]/span/span')[0].text
+            user_id = 'Null'
+            #print(user_nickname, user_id)
         created_at = comment.xpath('div[@class="zwlitx"]/div/div[@class="zwlitime"]')[0].text.split('发表于')[1].strip()
         created_at = datetime.datetime.strptime(created_at,"%Y-%m-%d %H:%M:%S")
         content = self.get_comment_content(comment)
@@ -38,27 +42,37 @@ class Parser(object):
         comment_imgs = comment.xpath('div[@class="zwlitx"]/div/div[@class="zwlitext stockcodec"]/img')
         if len(comment_imgs) != 0:
             for img in comment_imgs:
+                try:
                     comment_content += '['+img.attrib['title']+']'
-        content = comment.xpath('div[@class="zwlitx"]/div/div[@class="zwlitext stockcodec"]')
+                except:
+                    continue
+        content = comment.xpath('div[@class="zwlitx"]/div/div[@class="zwlitext stockcodec"]//text()')
         if len(content) != 0:
-            comment_content += content[0].text.strip()
+            for i in range(len(content)):
+                comment_content += content[i].strip()
         return comment_content
     
     def get_comment_reply_to(self, comment):  #获取评论 回复的评论 内容
         reply_to = comment.xpath('div[@class="zwlitx"]/div/div[@class="zwlitalkbox clearfix"]')
         if len(reply_to) == 0:
             return ''
-        reply_to_user_nickname = reply_to[0].xpath('div/a')[0].text.strip()
+        if len(reply_to[0].xpath('div/a')) != 0:
+            reply_to_user_nickname = reply_to[0].xpath('div/a')[0].text.strip()
+        else:  #如果回复的对象是如“http://guba.eastmoney.com/news,600000,176775237_2.html#storeply”
+            reply_to_user_nickname = reply_to[0].xpath('div/span')[0].text.strip()
         reply_to_comment = ''
         reply_to_comment_imgs = reply_to[0].xpath('div/span/img')
         if len(reply_to_comment_imgs) != 0:
             for img in reply_to_comment_imgs:
                 reply_to_comment += '['+img.attrib['title']+']'
-        if (reply_to[0].xpath('div/span')) != None and len((reply_to[0].xpath('div/span'))) != 0:
-            try:
-                reply_to_comment += reply_to[0].xpath('div/span')[0].text.strip()
-            except:
-                pass
+        #if (reply_to[0].xpath('div/span'))!= None and len((reply_to[0].xpath('div//span'))) != 0:
+        try:
+            if len(reply_to[0].xpath('div//span')) == 1:
+                reply_to_comment += reply_to[0].xpath('div/span[1]//text()')[0].strip()
+            elif len(reply_to[0].xpath('div//span')) == 2:
+                reply_to_comment += reply_to[0].xpath('div/span[2]//text()')[0].strip()
+        except:
+            pass
         reply_to_comment_id = reply_to[0].xpath('div')[0].attrib['data-huifuid']
         reply_to_dict = {
                     'reply_to_user_nickname': reply_to_user_nickname,
@@ -66,9 +80,13 @@ class Parser(object):
                     'reply_to_comment_id': reply_to_comment_id
         }
         return reply_to_dict
+
     
     def get_post_title(self, html):  #获取文章标题
-        title = html.xpath('//div[@id="zwcontent"]//div[@id="zwconttbt"]/text()')[0].strip()
+        try:
+            title = html.xpath('//div[@id="zwcontent"]//div[@id="zwconttbt"]/text()')[0].strip()
+        except:
+            title = ''
         return title
     
     def get_post_question(self, html):  #获取文章问题
@@ -95,7 +113,10 @@ class Parser(object):
         imgs = html.xpath('//div[@id="zwconbody"]/div[@class="stockcodec"]/img')
         if len(imgs)!= 0:
             for img in imgs:
-                post_content += ('['+img.attrib['title']+']')
+                try:
+                    post_content += ('['+img.attrib['title']+']')
+                except:
+                    continue
         content = html.xpath('//div[@id="zwconbody"]/div[@class="stockcodec"]/text()')
         for s in content:
             post_content += (s.strip())
@@ -103,9 +124,12 @@ class Parser(object):
         return post_content
     
     def get_post_time(self, html):  #获取文章发表时间
-        post_time = html.xpath('//div[@id="zwcontent"]/div[@id="zwcontt"]/div[@id="zwconttb"]/div[2]')[0].text
-        post_time = re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}',post_time)[0]
-        post_time = datetime.datetime.strptime(post_time,"%Y-%m-%d %H:%M:%S")
+        try:
+            post_time = html.xpath('//div[@id="zwcontent"]/div[@id="zwcontt"]/div[@id="zwconttb"]/div[2]')[0].text
+            post_time = re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}',post_time)[0]
+            post_time = datetime.datetime.strptime(post_time,"%Y-%m-%d %H:%M:%S")
+        except:
+            post_time = datetime.datetime.strptime('1970-01-01 12:00:00',"%Y-%m-%d %H:%M:%S")
         return post_time
    
     def get_author_id(self, html):  #获取文章作者id
@@ -131,15 +155,27 @@ class Parser(object):
                     continue
             else:
                 post_type = 'normal'
+            try:
+                title = p.xpath('span[@class="l3"]/a')[0].text
+                last_update_time = p.xpath('span[@class="l3"]/em/@class')
+                view_count = p.xpath('span[@class="l1"]')[0].text #阅读数量
+                comment_count = p.xpath('span[@class="l2"]')[0].text #评论数量
+                if len(p.xpath('span[@class="l4"]/a'))!= 0:  #用户昵称有可能为如“上海手机网友”的情况。如http://guba.eastmoney.com/news,600000,177049240.html
+                    user_nickname = p.xpath('span[@class="l4"]/a')[0].text
+                else:
+                    user_nickname = p.xpath('span[@class="l4"]/span')[0].text
+            except:
+                print('出问题了%s:%s' % (url,title))
+                continue
             p_ele = dict({
                 'url': 'http://guba.eastmoney.com/' + url,
-                'user_nickname': p.xpath('span[@class="l4"]/a')[0].text,
-                'title': p.xpath('span[@class="l3"]/a')[0].text,
+                'user_nickname': user_nickname,
+                'title': title,
                 'post_type': post_type,
-                'last_update_time' : p.xpath('span[@class="l3"]/em/@class'),
+                'last_update_time' : last_update_time,
                 'post_id': re.findall(r'(\d*).html',url)[0],
-                'view_count': p.xpath('span[@class="l1"]')[0].text, #阅读数量
-                'comment_count': p.xpath('span[@class="l2"]')[0].text, #评论数量 
+                'view_count': view_count,
+                'comment_count': comment_count
             })
             ele_list.append(p_ele)       
         return ele_list

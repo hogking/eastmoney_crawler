@@ -8,20 +8,24 @@ class User(object):
         
     def set_detail(self, parser):
         self.url = 'http://iguba.eastmoney.com/' + self.id  #页面链接
-        html = load_page(self.url)
-        self.avator = parser.get_user_avator(html)  #头像
-        self.reg_date = datetime.datetime.strptime(parser.get_user_reg_date(html),"%Y-%m-%d")  #注册日期
-        self.following_count = parser.get_user_following_count(html)  #关注数
-        self.fans_count = parser.get_user_fans_count(html)  #粉丝数
-        self.influence = parser.get_user_influence(html)  #影响力
-        self.introduce = parser.get_user_introduce(html)  #个人简介
-        self.visit_count = parser.get_user_visit_count(html)  #访问数
-        self.post_count = parser.get_user_post_count(html)  #发帖数
-        self.comment_count = parser.get_user_comment_count(html)  #回帖数
-        self.optional_count = parser.get_user_optional_count(html)  #自选股数
-        self.capacity_circle = parser.get_user_capacity_circle(html)  #能力圈
-        self.source = 'eastmoney'
-        
+        try:
+            html = load_page(self.url)
+            self.avator = parser.get_user_avator(html)  #头像
+            self.avator = ''
+            self.reg_date = datetime.datetime.strptime(parser.get_user_reg_date(html),"%Y-%m-%d")  #注册日期
+            self.following_count = parser.get_user_following_count(html)  #关注数
+            self.fans_count = parser.get_user_fans_count(html)  #粉丝数
+            self.influence = parser.get_user_influence(html)  #影响力
+            self.introduce = parser.get_user_introduce(html)  #个人简介
+            self.visit_count = parser.get_user_visit_count(html)  #访问数
+            self.post_count = parser.get_user_post_count(html)  #发帖数
+            self.comment_count = parser.get_user_comment_count(html)  #回帖数
+            self.optional_count = parser.get_user_optional_count(html)  #自选股数
+            self.capacity_circle = parser.get_user_capacity_circle(html)  #能力圈
+            self.source = 'eastmoney'
+            return 1
+        except:
+            return 0
     def save(self, db):
         db.update({'id': self.id}, {
             'id': self.id,
