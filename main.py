@@ -11,6 +11,7 @@ import redis_queue
 #用于增量爬取更新的文章
 def get_post(method, i):
     queue = redis.StrictRedis(host='localhost', port=6379, db=0)
+    mongodb = MongoAPI("localhost", 27017, "community", "post") 
     while queue.llen('code') != 0:  #若队列中还有任务，就爬取该代码内容
         start = time.time()
         code = queue.lpop('code').decode()  #从队列中获取一个代码
@@ -18,6 +19,9 @@ def get_post(method, i):
         print('进程%s开始爬取%s,链接：%s' % (i, code, url))
         c = Crawler(url)
         if method != 'update':  #参数不为'update'，则会爬取全部文章
+            c.crawl()
+        elif mongodb.check_exist({'code': code}) == False:  #如果数据库中不含该股票的帖子数据，说明未爬取过
+            print('不存在%s的记录，全爬取' % code)
             c.crawl()
         else:
             c.crawl_new_data()

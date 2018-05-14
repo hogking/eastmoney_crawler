@@ -35,6 +35,7 @@ def get_html(link):
 
 def load_page(link):
     keep_request = True
+    connect_time = 0
     while keep_request:
         UA = random.choice(agent_list)
         try:
@@ -45,5 +46,9 @@ def load_page(link):
             keep_request = False
             return html
         except:
+            if connect_time == 5:
+                print("获取%s失败,已经达到最大重连次数5次" % link)
+                break
             print("获取%s失败,重新连接" % link)
+            connect_time += 1
             time.sleep(1)
