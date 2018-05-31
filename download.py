@@ -28,10 +28,25 @@ agent_list = [
 
 
 def get_html(link):
-    UA = random.choice(agent_list) 
-    r = requests.get(link, headers={'Host':'iguba.eastmoney.com', 'User-Agent': UA}, 
-                    timeout = 30)
-    return r.text
+    keep_request = True
+    connect_time = 0
+    while keep_request:
+        UA = random.choice(agent_list) 
+        try:
+            r = requests.get(link, 
+                        headers= {'Host':'iguba.eastmoney.com', 'User-Agent': UA}, 
+                        timeout= 10)
+            time.sleep(0.5)
+            keep_request = False
+            return r.text
+        except:
+            if connect_time == 5:
+                print("获取%s失败,已经达到最大重连次数5次" % link)
+                break
+                #print("获取%s失败,重新连接" % link)
+            connect_time += 1
+            time.sleep(1)
+
 
 def load_page(link):
     keep_request = True
@@ -41,7 +56,8 @@ def load_page(link):
         try:
             r = requests.get(link, 
                             headers= {'Host':'guba.eastmoney.com', 'User-Agent': UA}, 
-                            timeout= 30)
+                            timeout= 10)
+            time.sleep(0.5)
             html = etree.HTML(r.text)
             keep_request = False
             return html
@@ -49,6 +65,6 @@ def load_page(link):
             if connect_time == 5:
                 print("获取%s失败,已经达到最大重连次数5次" % link)
                 break
-            print("获取%s失败,重新连接" % link)
+            #print("获取%s失败,重新连接" % link)
             connect_time += 1
             time.sleep(1)

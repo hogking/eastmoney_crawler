@@ -38,7 +38,8 @@ if __name__ == "__main__":
     #多进程执行
     p = Pool(5)  #设置进程数
     #update为增量更新
-    method = 'update'  #'update'为增量爬取，若为其它变量，则为首次全爬取
+    #method = 'update'  #'update'为增量爬取，若为其它变量，则为首次全爬取
+    method = 'all'
     for i in range(6):
         p.apply_async(get_post, args=(method,i))  #多进程获取数据
     p.close()
